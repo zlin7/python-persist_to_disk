@@ -54,6 +54,9 @@ class Config(dict):
             global_config['global_settings']['persist_path'] = DEFAULT_PERSIST_PATH
             global_config['global_settings']['hashsize'] = '500'
 
+            # global, func, call
+            global_config['global_settings']['lock_granularity'] = 'func'
+
             # List to add:
             # 1. Whether to automatically clear a folder if hashsize changes
         else:
@@ -62,8 +65,9 @@ class Config(dict):
         # worksapce_config
         self.config = {'persist_path': None,
                        'project_path': os.path.normpath(os.getcwd())}
-        for key in ['hashsize']:
+        for key in ['hashsize', 'lock_granularity']:
             self.config[key] = self.global_config['global_settings'][key]
+        assert self.config['lock_granularity'] in {"call", "func", "global"}
 
     def generate_config(self):
         with open(CONFIG_PATH, 'w', encoding='utf-8') as fout:

@@ -14,7 +14,17 @@ To set global settings (for example, where the cache should go by default), plea
 import persist_to_disk as ptd
 ptd.config.generate_config()
 ```
-Then, you could change the setting `persist_path` parameter in there.
+Then, you could change the settings there:
+
+1. `persist_path`: where to store the cache.
+    All projects you have on this machine will have a folder under `persist_path` by default, unless you specify it within the project (See examples below).
+2. `hashsize`: How many hash buckets to use to store each function's outputs. Default=500.
+3. `lock_granularity`:
+    How granular the lock is.
+    This could be `call`, `func` or `global`.
+    `call` means each hash bucket will have one lock, so only only processes trying to write/read to/from the same hash bucket will share the same lock.
+    `func` means each function will have one lock, so if you have many processes calling the same function they will all be using the same lock.
+    `global` all processes share the same lock (I tested that it's OK to have nested mechanism on Unix).
 
 
 # Example
@@ -48,3 +58,13 @@ def train_a_model(dataset, model_cls, model_kwargs, lr, epochs):
     ...
 ```
 
+### Project-specific `persist_path`
+
+You could specify the place to save cache on the fly by:
+```
+import persist_to_disk as ptd
+ptd.config.set_persist_path(YOUR_PATH)
+```
+Note that you can also `set_hashsize`.
+Project-level settings will overwrite the global settings.
+Function-level settings (e.g. `hashsize`) will further overwrite project-level settings.

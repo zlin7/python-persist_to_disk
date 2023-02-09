@@ -1,21 +1,26 @@
 """Main functions for persist_to_disk.
 """
 import os
+import inspect
+from typing import Callable, Optional, List, Tuple, Union, Any
+
 from .config import Config
 from .persister import Persister, NOCACHE, CACHE, RECACHE, READONLY
 from .persister import persist_func_version
+from . import persister
 
 
 # Global config so user could set the root directory for persist ops
 config = Config()
 
 
-def persistf(**kwargs):
+def persistf(freq=None, hashsize: int = None,
+             skip_kwargs: List[str] = None, expand_dict_kwargs: Union[List[str], str] = None,
+             groupby: List[str] = None,
+             switch_kwarg: str = 'cache', cache: int = None):
     """Base decorator that does all the heavy-lifting for caching, taking additional arguments.
 
     Args:
-        func (Callable): The function to cache
-        config (Config): The (default) configs that apply to all functions in this project.
         freq (_type_, optional): unused for now. Defaults to None.
         hashsize (int, optional): Calls/Inputs to func are hashed into *hashsize* buckets.
             Defaults to what's set in config.
@@ -40,16 +45,20 @@ def persistf(**kwargs):
             Defaults to None (equivalent to CACHE).
     """
     def _decorator(func):
-        return persist_func_version(func, config, **kwargs)
+        return persist_func_version(func, config,
+                                    freq=freq, hashsize=hashsize,
+                                    skip_kwargs=skip_kwargs, expand_dict_kwargs=expand_dict_kwargs,
+                                    groupby=groupby, switch_kwarg=switch_kwarg, cache=cache)
     return _decorator
 
 
-def persist(**kwargs):
+def persist(freq=None, hashsize: int = None,
+            skip_kwargs: List[str] = None, expand_dict_kwargs: Union[List[str], str] = None,
+            groupby: List[str] = None,
+            switch_kwarg: str = 'cache', cache: int = None):
     """Base decorator that does all the heavy-lifting for caching, taking additional arguments.
 
     Args:
-        func (Callable): The function to cache
-        config (Config): The (default) configs that apply to all functions in this project.
         freq (_type_, optional): unused for now. Defaults to None.
         hashsize (int, optional): Calls/Inputs to func are hashed into *hashsize* buckets.
             Defaults to what's set in config.
@@ -73,7 +82,10 @@ def persist(**kwargs):
             Useful for recaching/debugging purposes.
             Defaults to None (equivalent to CACHE).
     """
-    return lambda func: Persister(func, config, **kwargs)
+    return lambda func: Persister(func, config,
+                                  freq=freq, hashsize=hashsize,
+                                  skip_kwargs=skip_kwargs, expand_dict_kwargs=expand_dict_kwargs,
+                                  groupby=groupby, switch_kwarg=switch_kwarg, cache=cache)
 
 
 def clear_locks(clear=False):
@@ -98,13 +110,52 @@ def clear_locks(clear=False):
             print(os.path.join(root, name))
 
 
+def get_caller_cache_path(make_if_necessary=True):
+    """infer the cache path for the caller, for manual cache.
+
+    Args:
+        make_if_necessary (bool, optional):
+            Make the directory if it does not exist.
+            Defaults to True.
+
+    Returns:
+        str: default path to save the cache
+    """
+    return persister._get_caller_cache_path(config, inspect.stack()[1], make_if_necessary)
+
+
+def manual_cache(key: str, obj: Any = None, write: bool = False) -> Any:
+    """Manual cache helper.
+    Each function gets a directory to store all results.
+    Each result is saved with *key* as the filename.
+    If *write*, writes *obj* with key=*key*.
+
+    WARNING: This function is not multiprocess-safe.
+        This is because each file should contain only 1 cache result.
+
+    Args:
+        key (str):
+            key of cache.
+        obj (Any, optional):
+            Result to cache. Defaults to None.
+        write (bool, optional):
+            Write or read the cache. Defaults to False.
+
+    Returns:
+        Any: cached result when *write*, else None.
+    """
+    return persister._manual_cache_infer_path(key, obj, write, config, inspect.stack()[1])
+
+
 __all__ = [
     'config',
     'persist',
     'clear_locks',
     'persistf',
+    'get_caller_cache_path',
+    'manual_cache'
 ]
 
-__version__ = "0.0.1"
+__version__ = "0.0.2"
 __author__ = 'Zhen Lin'
 __credits__ = ''

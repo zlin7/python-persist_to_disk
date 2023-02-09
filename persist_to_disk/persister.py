@@ -62,9 +62,10 @@ def _hash(k):
     return int(hashlib.md5(pickle.dumps(k, protocol=3)).hexdigest(), 16)
 
 
-def _persist_rw_curr_results(cache_path, write_key=None, write_val=None):
-    fl = FileLock(cache_path)
-    with fl:
+def _persist_rw_curr_results(cache_path, write_key=None, write_val=None, *, lock_path):
+    if lock_path is None:
+        lock_path = cache_path  # lock at call level
+    with FileLock(lock_path):
         try:
             res = _utils.read_pickle(cache_path)
         except Exception as err:
@@ -78,7 +79,7 @@ def _persist_rw_curr_results(cache_path, write_key=None, write_val=None):
         return res
 
 
-def _persist_write(cache_path, key, func, args, kwargs, alt_roots):
+def _persist_write(cache_path, key, func, args, kwargs, alt_roots, *, lock_path):
     if alt_roots is not None:
         # try to look up in alterantive root cache paths..
         # If can't find anything, then save to the original path.
@@ -88,18 +89,18 @@ def _persist_write(cache_path, key, func, args, kwargs, alt_roots):
     else:
         val = func(*args, **kwargs)
     try:
-        _persist_rw_curr_results(cache_path, key, val)
+        _persist_rw_curr_results(cache_path, key, val, lock_path=lock_path)
     except Timeout as err:
         raise err
     return val
 
 
 def _persist_write_if_necessary(cache_path, key, func, args, kwargs,
-                                readonly=False, alt_roots=None):
+                                readonly=False, alt_roots=None, *, lock_path):
     try:
         _print(
             f"persist_to_disk: {cache_path} exists? : {os.path.isfile(cache_path)}.")
-        res = _persist_rw_curr_results(cache_path)
+        res = _persist_rw_curr_results(cache_path, lock_path=lock_path)
         _print(
             f"persist_to_disk: Looking up {key} in {cache_path}({res.keys()}): {key in res}.")
         if key in res:
@@ -107,7 +108,7 @@ def _persist_write_if_necessary(cache_path, key, func, args, kwargs,
     except Timeout as err:
         raise err
     assert not readonly, "In readonly mode, but there is no existing cache."
-    return _persist_write(cache_path, key, func, args, kwargs, alt_roots=alt_roots)
+    return _persist_write(cache_path, key, func, args, kwargs, alt_roots=alt_roots, lock_path=lock_path)
 
 
 # test input d={"model": {"1": {"2": 3, '2a': 4}}, 'a': 2}
@@ -167,6 +168,16 @@ def _get_hashed_path_and_key(cache_dir, full_kwargs, hashsize, groupby):
     return hashed_path, key
 
 
+def _get_lock_path(call_cache_path, config: Config) -> str:
+    lock_granularity = config.config['lock_granularity']
+    if lock_granularity == 'call':
+        return call_cache_path
+    if lock_granularity == 'func':
+        return os.path.join(os.path.dirname(call_cache_path), 'func_persist_lock')
+    assert lock_granularity == 'global'
+    return os.path.join(config.get_persist_path(), 'global_persist_lock')
+
+
 class Persister():
     """Base class that does all the heavy-lifting.
     """
@@ -174,6 +185,8 @@ class Persister():
     @classmethod
     def _check_arguments(cls, config: Config, freq, skip_kwargs, hashsize, switch_kwarg,
                          expand_dict_kwargs, groupby, cache):
+        if isinstance(expand_dict_kwargs, str) and expand_dict_kwargs == 'all':
+            expand_dict_kwargs = []
         special_kwargs = set(groupby + expand_dict_kwargs + skip_kwargs)
         assert len(special_kwargs) == len(groupby) + \
             len(expand_dict_kwargs) + len(skip_kwargs)
@@ -237,11 +250,12 @@ class Persister():
             full_kwargs, self.skip_kwargs, self.expand_dict_kwargs)
         hashed_path, key = _get_hashed_path_and_key(
             self.cache_dir, _cleaned, self.hashsize, self.groupby)
+        lock_path = _get_lock_path(hashed_path, self.config)
         if cache_switch == RECACHE:
-            return _persist_write(hashed_path, key, self.__wrapped__, args, kwargs, alt_roots=None)
+            return _persist_write(hashed_path, key, self.__wrapped__, args, kwargs, alt_roots=None, lock_path=lock_path)
         return _persist_write_if_necessary(hashed_path, key, self.__wrapped__, args, kwargs,
                                            readonly=cache_switch == READONLY,
-                                           alt_roots=self.alt_roots)
+                                           alt_roots=self.alt_roots, lock_path=lock_path)
 
     def clear(self):
         """clean all the cache for self.__wrapped__
@@ -261,3 +275,33 @@ def persist_func_version(func, config: Config, **kwargs):
     def inner(*args, **kwargs):
         return obj(*args, **kwargs)
     return inner
+
+# ===========================Manual Cache
+
+
+def _get_caller_cache_path(config: Config, caller_=None, make_if_necessary=False):
+    cache_dir = get_persist_dir_from_paths(
+        config.get_persist_path(),
+        caller_.filename,
+        config.get_project_path()
+    )
+    if 'self' in caller_[0].f_locals:
+        _caller_func_name = f"{caller_[0].f_locals['self'].__class__.__name__}.{caller_.function}"
+    else:
+        _caller_func_name = caller_.function
+    cache_dir = os.path.join(cache_dir, _caller_func_name)
+    assert '__main__' not in cache_dir
+    if make_if_necessary:
+        _utils.make_dir_if_necessary(cache_dir)
+    return cache_dir
+
+
+def _manual_cache_infer_path(key, obj, write, config: Config, caller_):
+    cache_dir = _get_caller_cache_path(config, caller_, True)
+    cache_path = os.path.join(cache_dir, key)
+    if write:
+        _utils.to_pickle(obj, cache_path)
+    else:
+        if os.path.exists(cache_path):
+            return _utils.read_pickle(cache_path)
+        return None
