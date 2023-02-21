@@ -99,7 +99,7 @@ def clear_locks(clear=False):
             If True, actually delete them.
             Defaults to False.
     """
-    for root, dirs, files in os.walk(config.get_persist_path(), topdown=False):
+    for root, dirs, files in os.walk(config.get_project_persist_path(), topdown=False):
         for name in files:
             if name.endswith(".lock"):
                 print(os.path.join(root, name))
@@ -156,6 +156,6 @@ __all__ = [
     'manual_cache'
 ]
 
-__version__ = "0.0.2"
+__version__ = "0.0.3"
 __author__ = 'Zhen Lin'
 __credits__ = ''

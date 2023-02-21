@@ -1,6 +1,6 @@
 """ Main script.
 """
-from typing import Callable, Optional, List, Tuple, Union
+from typing import Callable, Optional, List, Tuple, Union, Any
 import os
 #import time
 #import sys
@@ -79,7 +79,7 @@ def _persist_rw_curr_results(cache_path, write_key=None, write_val=None, *, lock
         return res
 
 
-def _persist_write(cache_path, key, func, args, kwargs, alt_roots, *, lock_path):
+def _persist_write(cache_path, key, closure_func: Callable[[], Any], alt_roots, *, lock_path):
     if alt_roots is not None:
         # try to look up in alterantive root cache paths..
         # If can't find anything, then save to the original path.
@@ -87,7 +87,7 @@ def _persist_write(cache_path, key, func, args, kwargs, alt_roots, *, lock_path)
         # assert _PERSIST_PATH in cache_path, "How did you generate this cache path??"
         raise NotImplementedError()  # Should probably replace before passing in alt_roots
     else:
-        val = func(*args, **kwargs)
+        val = closure_func()
     try:
         _persist_rw_curr_results(cache_path, key, val, lock_path=lock_path)
     except Timeout as err:
@@ -95,7 +95,7 @@ def _persist_write(cache_path, key, func, args, kwargs, alt_roots, *, lock_path)
     return val
 
 
-def _persist_write_if_necessary(cache_path, key, func, args, kwargs,
+def _persist_write_if_necessary(cache_path, key, closure_func: Callable[[], Any],
                                 readonly=False, alt_roots=None, *, lock_path):
     try:
         _print(
@@ -108,7 +108,7 @@ def _persist_write_if_necessary(cache_path, key, func, args, kwargs,
     except Timeout as err:
         raise err
     assert not readonly, "In readonly mode, but there is no existing cache."
-    return _persist_write(cache_path, key, func, args, kwargs, alt_roots=alt_roots, lock_path=lock_path)
+    return _persist_write(cache_path, key, closure_func, alt_roots=alt_roots, lock_path=lock_path)
 
 
 # test input d={"model": {"1": {"2": 3, '2a': 4}}, 'a': 2}
@@ -175,7 +175,7 @@ def _get_lock_path(call_cache_path, config: Config) -> str:
     if lock_granularity == 'func':
         return os.path.join(os.path.dirname(call_cache_path), 'func_persist_lock')
     assert lock_granularity == 'global'
-    return os.path.join(config.get_persist_path(), 'global_persist_lock')
+    return os.path.join(config.get_project_persist_path(), 'global_persist_lock')
 
 
 class Persister():
@@ -227,7 +227,7 @@ class Persister():
 
         # Get the cache_dir straight
         self.cache_dir = get_persist_dir_from_paths(
-            config.get_persist_path(),
+            config.get_project_persist_path(),
             inspect.getsourcefile(func),
             config.get_project_path()
         )
@@ -241,8 +241,12 @@ class Persister():
 
     def __call__(self, *args, **kwargs):
         kwargs = copy.deepcopy(kwargs)
-        curr_cache_switch = int(kwargs.pop(self.switch_kwarg, CACHE))
+
+        def closure():
+            return self.__wrapped__(*args, **kwargs)
+
         full_kwargs = _get_full_kwargs_noargs(self.__wrapped__, args, kwargs)
+        curr_cache_switch = int(full_kwargs.pop(self.switch_kwarg, CACHE))
         cache_switch = self.cache if self.cache is not None else curr_cache_switch
         if cache_switch == NOCACHE:
             return self.__wrapped__(**full_kwargs)
@@ -251,9 +255,10 @@ class Persister():
         hashed_path, key = _get_hashed_path_and_key(
             self.cache_dir, _cleaned, self.hashsize, self.groupby)
         lock_path = _get_lock_path(hashed_path, self.config)
+
         if cache_switch == RECACHE:
-            return _persist_write(hashed_path, key, self.__wrapped__, args, kwargs, alt_roots=None, lock_path=lock_path)
-        return _persist_write_if_necessary(hashed_path, key, self.__wrapped__, args, kwargs,
+            return _persist_write(hashed_path, key, closure, alt_roots=None, lock_path=lock_path)
+        return _persist_write_if_necessary(hashed_path, key, closure,
                                            readonly=cache_switch == READONLY,
                                            alt_roots=self.alt_roots, lock_path=lock_path)
 
@@ -281,7 +286,7 @@ def persist_func_version(func, config: Config, **kwargs):
 
 def _get_caller_cache_path(config: Config, caller_=None, make_if_necessary=False):
     cache_dir = get_persist_dir_from_paths(
-        config.get_persist_path(),
+        config.get_project_persist_path(),
         caller_.filename,
         config.get_project_path()
     )

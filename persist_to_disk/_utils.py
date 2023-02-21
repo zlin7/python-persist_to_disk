@@ -42,7 +42,7 @@ def make_dir_if_necessary(dirname, max_depth=3):
     """
     if os.path.isdir(dirname):
         return
-    assert max_depth >= 0, "Cannot make too many nested directories. Something could be wrong!"
+    assert max_depth >= 0, f"Cannot make too many nested directories. Something could be wrong!, dirname={dirname}"
     if not os.path.isdir(os.path.dirname(dirname)):
         make_dir_if_necessary(os.path.dirname(dirname), max_depth - 1)
     fl = FileLock(dirname)

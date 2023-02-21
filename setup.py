@@ -19,7 +19,7 @@ with open('HISTORY.md', encoding='utf-8') as history_file:
 
 setup_args = dict(
     name='persist_to_disk',
-    version='0.0.2',
+    version='0.0.3',
     description='Persist expensive operations on disk.',
     long_description_content_type="text/markdown",
     long_description=README + '\n\n' + HISTORY,
@@ -29,12 +29,10 @@ setup_args = dict(
     author_email='zhenlin4@illinois.edu',
     keywords=['Cache', 'Persist'],
     url='https://github.com/zlin7/python-persist_to_disk',
-    # download_url='https://pypi.org/project/elastictools/'
 )
 
 install_requires = [
-    'filelock==3.9.0',
-    'six>=1.16'
+    'filelock==3.9.0'
 ]
 
 if __name__ == '__main__':

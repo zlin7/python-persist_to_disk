@@ -8,7 +8,6 @@ from . import _utils
 SETTING_PATH = os.path.join(Path.home(), '.persist_to_disk')
 _utils.make_dir_if_necessary(SETTING_PATH)
 DEFAULT_PERSIST_PATH = os.path.join(SETTING_PATH, 'cache')
-# DEFAULT_PERSIST_PATH = 'C:/Users/zhen7/Desktop/gitRes/persist_to_disk/.persist_to_disk'
 CONFIG_PATH = os.path.join(SETTING_PATH, 'config.ini')
 
 
@@ -65,6 +64,10 @@ class Config(dict):
         # worksapce_config
         self.config = {'persist_path': None,
                        'project_path': os.path.normpath(os.getcwd())}
+        self.set_persist_path(
+                self.global_config['global_settings']['persist_path'])
+
+        self._private_config = {'_persist_path': {}}
         for key in ['hashsize', 'lock_granularity']:
             self.config[key] = self.global_config['global_settings'][key]
         assert self.config['lock_granularity'] in {"call", "func", "global"}
@@ -74,21 +77,13 @@ class Config(dict):
             self.global_config.write(fout)
         print(f"Settings written to {CONFIG_PATH}")
 
-    def set_persist_path(self, path, project_name=None):
-        path = os.path.normpath(path)
-        _utils.make_dir_if_necessary(path)
-        if project_name is None:
-            project_path = self.config['project_path']
-            pid = _read_project_pid(project_path)
-            persist_path = os.path.join(
-                path, f"{os.path.basename(project_path)}-{pid}")
-            _record_project_persist_path(persist_path, pid)
-        else:
-            persist_path = os.path.join(path, project_name)
-        _utils.make_dir_if_necessary(persist_path)
-        self.config['persist_path'] = persist_path
-        # self.config['project_name'] = project_name or pid
-        return persist_path
+    def set_project_path(self, path: str):
+        self.config['project_path'] = os.path.normpath(os.path.abspath(path))
+        return self.config['project_path']
+
+    def set_persist_path(self, path):
+        self.config['persist_path'] = os.path.normpath(os.path.abspath(path))
+        return self.config['persist_path']
 
     def set_hashsize(self, hashsize=500):
         self.config['hashsize'] = hashsize
@@ -100,12 +95,23 @@ class Config(dict):
     def get_alternative_roots(self):
         return None
 
+    def _compute_and_save_actual_persist_path(self):
+        persist_path = self.get_persist_path()
+        project_path = self.get_project_path()
+
+        if (persist_path, project_path) not in self._private_config['_persist_path']:
+            pid = _read_project_pid(project_path)
+            final_path = os.path.join(persist_path, f"{os.path.basename(project_path)}-{pid}")
+            _record_project_persist_path(final_path, pid)
+            _utils.make_dir_if_necessary(final_path)
+            self._private_config['_persist_path'][(persist_path, project_path)] = final_path
+        return self._private_config['_persist_path'][(persist_path, project_path)]
+
     def get_persist_path(self):
-        persist_path = self.config.get('persist_path', None)
-        if persist_path is None:
-            persist_path = self.set_persist_path(
-                self.global_config['global_settings']['persist_path'])
-        return persist_path
+        return self.config['persist_path']
+
+    def get_project_persist_path(self):
+        return self._compute_and_save_actual_persist_path()
 
     def get_project_path(self):
         return self.config['project_path']
