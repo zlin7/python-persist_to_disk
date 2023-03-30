@@ -34,7 +34,7 @@ Then, you could (optionally) change the settings in the generated `config.ini`:
 Using `persist_to_disk` is very easy.
 For example, if you want to write a general training function:
 ```
-import torch 
+import torch
 
 @ptd.persistf()
 def train_a_model(dataset, model_cls, lr, epochs, device='cpu'):
@@ -45,7 +45,7 @@ if __name__ == '__main__':
     train_a_model('MNIST', torch.nn.Linear, 1e-3, 30)
 ```
 
-Suppose the above is in a file with path `~/project_name/pipeline/train.py`. 
+Suppose the above is in a file with path `~/project_name/pipeline/train.py`.
 If we are in `~/project_name` and run `python -m pipeline.train`, a cache folder will be created under `PERSIST_PATH`, like the following:
 ```
 PERSIST_PATH(=ptd.config.get_persist_path())
@@ -55,7 +55,7 @@ PERSIST_PATH(=ptd.config.get_persist_path())
 │   │   │   ├── train_a_model
 │   │   │   │   ├──[hashed_bucket].pkl
 ```
-Note that in the above, `[autoid]` is a auto-generated id. 
+Note that in the above, `[autoid]` is a auto-generated id.
 `[hashed_bucket]` will be an int in [0, `hashsize`).
 
 ### Multiprocessing
@@ -66,11 +66,11 @@ Note that `ptd.persistf` can be used with [multiprocessing](https://docs.python.
 
 ## `config.set_project_path` and `config.set_persist_path`
 
-There are two important paths for each workspace/project: `project_path` and `persist_path`. 
+There are two important paths for each workspace/project: `project_path` and `persist_path`.
 You could set them by calling `ptd.config.set_project_path` and `ptd.config.set_persist_path`.
 
 On a high level, `persist_path` determines *where* the results are cached/persisted, and `project_path` determines the structure of the cache file tree.
-Following the basic example, `ptd.config.persist_path(PERSIST_PATH)` will only change the root directory. 
+Following the basic example, `ptd.config.persist_path(PERSIST_PATH)` will only change the root directory.
 On the other hand, supppose we add a line of `ptd.config.set_project_path("./pipeline")` to `train.py` and run it again, the new file structure will be created under `PERSIST_PATH`, like the following:
 ```
 PERSIST_PATH(=ptd.config.get_persist_path())
@@ -80,7 +80,7 @@ PERSIST_PATH(=ptd.config.get_persist_path())
 │   │   │   ├──[hashed_bucket].pkl
 ```
 
-Alternatively, it is also possible that we store some notebooks under `~/project_name/notebook/`. 
+Alternatively, it is also possible that we store some notebooks under `~/project_name/notebook/`.
 In this case, we could set the `project_path` back to `~/project_name`.
 You could check the mapping from projects to autoids in `~/.persist_to_disk/project_to_pids.txt`.
 
@@ -100,7 +100,7 @@ def train_a_model(dataset, model_cls, model_kwargs, lr, epochs, device='cpu'):
 ```
 The kwargs we passed to `persistf` has the following effects:
 
-* `groupby`: We will create more intermediate directories basing on what's in `groupby`. 
+* `groupby`: We will create more intermediate directories basing on what's in `groupby`.
 In the example above, the new cache structure will look like
 ```
 PERSIST_PATH(=ptd.config.get_persist_path())
@@ -119,13 +119,13 @@ PERSIST_PATH(=ptd.config.get_persist_path())
 ```
 
 * `expand_dict_kwargs`: This simply allows the dictionary to be passed in.
-This is because we cannot hash a dictionary directly, so there are additionally preprocessing steps for these arguments within `ptd`. 
+This is because we cannot hash a dictionary directly, so there are additionally preprocessing steps for these arguments within `ptd`.
 Note that you can also set `expand_dict_kwargs='all'` to avoid specifying individual dictionary arguements.
 However, please only do so IF YOU KNOW what you are passing in - a very big nested dictionary can make the cache-retrievement very slow and use a lot of disk space unnecessarily.
 
-* `skip_kwargs`: This specifies arguments that will be *ignored*. 
-For examplte, if we call `train_a_model(..., device='cpu')` and `train_a_model(..., device='cuda:0')`, the second run will simply read the cache, as `device` is ignored. 
+* `skip_kwargs`: This specifies arguments that will be *ignored*.
+For examplte, if we call `train_a_model(..., device='cpu')` and `train_a_model(..., device='cuda:0')`, the second run will simply read the cache, as `device` is ignored.
 
 ### Other useful parameters:
-* `hash_size`: Defaults to 500. 
+* `hash_size`: Defaults to 500.
 If a function has a lot of cache files, you can also increase this if necessary to reduce the number of `.pkl` files on disk.

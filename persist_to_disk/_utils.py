@@ -1,7 +1,7 @@
 """ Util functions
 """
-import pickle
 import os
+import pickle
 
 from .myfilelock import FileLock
 

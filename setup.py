@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
-from setuptools import setup, find_packages
+
+from setuptools import find_packages, setup
 
 
 def create_setting_folder():
@@ -19,7 +20,7 @@ with open('HISTORY.md', encoding='utf-8') as history_file:
 
 setup_args = dict(
     name='persist_to_disk',
-    version='0.0.3',
+    version='0.0.4',
     description='Persist expensive operations on disk.',
     long_description_content_type="text/markdown",
     long_description=README + '\n\n' + HISTORY,
@@ -29,6 +30,7 @@ setup_args = dict(
     author_email='zhenlin4@illinois.edu',
     keywords=['Cache', 'Persist'],
     url='https://github.com/zlin7/python-persist_to_disk',
+    # download_url='https://pypi.org/project/elastictools/'
 )
 
 install_requires = [

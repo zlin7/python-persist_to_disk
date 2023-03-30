@@ -1,4 +1,6 @@
-from filelock import Timeout, FileLock as RawFileLock
+from filelock import FileLock as RawFileLock
+from filelock import Timeout
+
 assert Timeout is not None
 
 

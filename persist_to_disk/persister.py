@@ -1,21 +1,22 @@
 """ Main script.
 """
-from typing import Callable, Optional, List, Tuple, Union, Any
-import os
+import copy
+import functools
 #import time
 #import sys
 import glob
-import copy
-import pickle
 import hashlib
 import inspect
-import functools
+import os
+import pickle
+from typing import Any, Callable, List, Optional, Tuple, Union
 
 import six
 
+from . import _utils
 from .config import Config
 from .myfilelock import FileLock, Timeout
-from . import _utils
+
 _DEBUG = False
 NOCACHE, CACHE, RECACHE, READONLY = [0, 1, 2, 3]
 
@@ -37,7 +38,7 @@ def get_persist_dir_from_paths(base_dir: str, file_path: str, project_path: str)
     Returns:
         str: The directory to store cache for functions in file_path.
     """
-    file_path = os.path.normpath(file_path)
+    file_path = os.path.normpath(os.path.abspath(file_path))
     assert file_path.endswith(".py")
     file_path = os.path.splitext(file_path)[0]
 
@@ -49,7 +50,7 @@ def get_persist_dir_from_paths(base_dir: str, file_path: str, project_path: str)
         persist_dir = os.path.join(
             base_dir, f"{os.path.basename(file_path)}-{pid}")
     else:
-        project_path = os.path.normpath(project_path)
+        project_path = os.path.normpath(os.path.abspath(project_path))
         assert project_path in file_path, \
             f"Expect file_path to be a sub-directory of project_path,'\
             ' but got {file_path} and {project_path}"
@@ -196,7 +197,7 @@ class Persister():
                  freq=None, hashsize: int = None,
                  skip_kwargs: List[str] = None, expand_dict_kwargs: Union[List[str], str] = None,
                  groupby: List[str] = None,
-                 switch_kwarg: str = 'cache', cache: int = None):
+                 switch_kwarg: str = 'cache_switch', cache: int = None):
         functools.update_wrapper(self, func)
         self.__defaults__ = six.get_function_defaults(func)
         if skip_kwargs is None:
@@ -241,12 +242,12 @@ class Persister():
 
     def __call__(self, *args, **kwargs):
         kwargs = copy.deepcopy(kwargs)
+        curr_cache_switch = int(kwargs.pop(self.switch_kwarg, CACHE))
 
         def closure():
             return self.__wrapped__(*args, **kwargs)
 
         full_kwargs = _get_full_kwargs_noargs(self.__wrapped__, args, kwargs)
-        curr_cache_switch = int(full_kwargs.pop(self.switch_kwarg, CACHE))
         cache_switch = self.cache if self.cache is not None else curr_cache_switch
         if cache_switch == NOCACHE:
             return self.__wrapped__(**full_kwargs)

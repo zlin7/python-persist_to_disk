@@ -1,14 +1,13 @@
 """Main functions for persist_to_disk.
 """
-import os
 import inspect
-from typing import Callable, Optional, List, Tuple, Union, Any
+import os
+from typing import Any, Callable, List, Optional, Tuple, Union
 
-from .config import Config
-from .persister import Persister, NOCACHE, CACHE, RECACHE, READONLY
-from .persister import persist_func_version
 from . import persister
-
+from .config import Config
+from .persister import (CACHE, NOCACHE, READONLY, RECACHE, Persister,
+                        persist_func_version)
 
 # Global config so user could set the root directory for persist ops
 config = Config()
@@ -17,7 +16,7 @@ config = Config()
 def persistf(freq=None, hashsize: int = None,
              skip_kwargs: List[str] = None, expand_dict_kwargs: Union[List[str], str] = None,
              groupby: List[str] = None,
-             switch_kwarg: str = 'cache', cache: int = None):
+             switch_kwarg: str = 'cache_switch', cache: int = None):
     """Base decorator that does all the heavy-lifting for caching, taking additional arguments.
 
     Args:
@@ -38,7 +37,7 @@ def persistf(freq=None, hashsize: int = None,
         switch_kwarg (str, optional):
             A switch to turn on/off the caching mechanism.
             Takes value in {NOCACHE, CACHE, RECACHE, READONLY}
-            Defaults to 'cache'.
+            Defaults to 'cache_switch'.
         cache (int, optional):
             Same as switch_kwarg but this is a function-level setting (not call level).
             Useful for recaching/debugging purposes.
@@ -55,7 +54,7 @@ def persistf(freq=None, hashsize: int = None,
 def persist(freq=None, hashsize: int = None,
             skip_kwargs: List[str] = None, expand_dict_kwargs: Union[List[str], str] = None,
             groupby: List[str] = None,
-            switch_kwarg: str = 'cache', cache: int = None):
+            switch_kwarg: str = 'cache_switch', cache: int = None):
     """Base decorator that does all the heavy-lifting for caching, taking additional arguments.
 
     Args:
@@ -76,7 +75,7 @@ def persist(freq=None, hashsize: int = None,
         switch_kwarg (str, optional):
             A switch to turn on/off the caching mechanism.
             Takes value in {NOCACHE, CACHE, RECACHE, READONLY}
-            Defaults to 'cache'.
+            Defaults to 'cache_switch'.
         cache (int, optional):
             Same as switch_kwarg but this is a function-level setting (not call level).
             Useful for recaching/debugging purposes.
@@ -156,6 +155,6 @@ __all__ = [
     'manual_cache'
 ]
 
-__version__ = "0.0.3"
+__version__ = "0.0.4"
 __author__ = 'Zhen Lin'
 __credits__ = ''
