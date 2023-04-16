@@ -1,3 +1,7 @@
+## 0.0.5
+==================
+1. `lock_granularity` can be set differently for each function.
+
 ## 0.0.4
 ==================
 1. Changed the behavior of `switch_kwarg`. Now, this is not considered an input to the wrapped function. For example, the correct usage is

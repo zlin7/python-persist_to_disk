@@ -169,8 +169,9 @@ def _get_hashed_path_and_key(cache_dir, full_kwargs, hashsize, groupby):
     return hashed_path, key
 
 
-def _get_lock_path(call_cache_path, config: Config) -> str:
-    lock_granularity = config.config['lock_granularity']
+def _get_lock_path(call_cache_path, config: Config, lock_granularity=None) -> str:
+    if lock_granularity is None:
+        lock_granularity = config.config['lock_granularity']
     if lock_granularity == 'call':
         return call_cache_path
     if lock_granularity == 'func':
@@ -185,7 +186,7 @@ class Persister():
 
     @classmethod
     def _check_arguments(cls, config: Config, freq, skip_kwargs, hashsize, switch_kwarg,
-                         expand_dict_kwargs, groupby, cache):
+                         expand_dict_kwargs, groupby, cache, lock_granularity):
         if isinstance(expand_dict_kwargs, str) and expand_dict_kwargs == 'all':
             expand_dict_kwargs = []
         special_kwargs = set(groupby + expand_dict_kwargs + skip_kwargs)
@@ -197,7 +198,7 @@ class Persister():
                  freq=None, hashsize: int = None,
                  skip_kwargs: List[str] = None, expand_dict_kwargs: Union[List[str], str] = None,
                  groupby: List[str] = None,
-                 switch_kwarg: str = 'cache_switch', cache: int = None):
+                 switch_kwarg: str = 'cache_switch', cache: int = None, lock_granularity:str=None):
         functools.update_wrapper(self, func)
         self.__defaults__ = six.get_function_defaults(func)
         if skip_kwargs is None:
@@ -208,7 +209,7 @@ class Persister():
             groupby = []
 
         Persister._check_arguments(
-            config, None, skip_kwargs, hashsize, switch_kwarg, expand_dict_kwargs, groupby, cache)
+            config, None, skip_kwargs, hashsize, switch_kwarg, expand_dict_kwargs, groupby, cache, lock_granularity)
 
         assert inspect.getfullargspec(
             func)[1] is None, "Does not support functions with *args."
@@ -225,6 +226,7 @@ class Persister():
         self.switch_kwarg = switch_kwarg  # 0 is not cache, 1 is cache, 2 is recache
         self.expand_dict_kwargs = expand_dict_kwargs
         self.groupby = groupby
+        self.lock_granularity = lock_granularity
 
         # Get the cache_dir straight
         self.cache_dir = get_persist_dir_from_paths(
@@ -255,7 +257,7 @@ class Persister():
             full_kwargs, self.skip_kwargs, self.expand_dict_kwargs)
         hashed_path, key = _get_hashed_path_and_key(
             self.cache_dir, _cleaned, self.hashsize, self.groupby)
-        lock_path = _get_lock_path(hashed_path, self.config)
+        lock_path = _get_lock_path(hashed_path, self.config, self.lock_granularity)
 
         if cache_switch == RECACHE:
             return _persist_write(hashed_path, key, closure, alt_roots=None, lock_path=lock_path)

@@ -16,7 +16,7 @@ config = Config()
 def persistf(freq=None, hashsize: int = None,
              skip_kwargs: List[str] = None, expand_dict_kwargs: Union[List[str], str] = None,
              groupby: List[str] = None,
-             switch_kwarg: str = 'cache_switch', cache: int = None):
+             switch_kwarg: str = 'cache_switch', cache: int = None, lock_granularity:str=None):
     """Base decorator that does all the heavy-lifting for caching, taking additional arguments.
 
     Args:
@@ -42,12 +42,14 @@ def persistf(freq=None, hashsize: int = None,
             Same as switch_kwarg but this is a function-level setting (not call level).
             Useful for recaching/debugging purposes.
             Defaults to None (equivalent to CACHE).
+        lock_granularity (str, optional):
+            Granularity of the lock. Can be either 'function', 'call' or 'global'.
     """
     def _decorator(func):
         return persist_func_version(func, config,
                                     freq=freq, hashsize=hashsize,
                                     skip_kwargs=skip_kwargs, expand_dict_kwargs=expand_dict_kwargs,
-                                    groupby=groupby, switch_kwarg=switch_kwarg, cache=cache)
+                                    groupby=groupby, switch_kwarg=switch_kwarg, cache=cache, lock_granularity=lock_granularity)
     return _decorator
 
 
@@ -155,6 +157,6 @@ __all__ = [
     'manual_cache'
 ]
 
-__version__ = "0.0.4"
+__version__ = "0.0.5"
 __author__ = 'Zhen Lin'
 __credits__ = ''
