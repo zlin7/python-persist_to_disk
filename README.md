@@ -1,9 +1,9 @@
 
 # Installation
 
-`pip install .`
+`pip install .` or `pip install persist-to-disk`
 
-**By default, a folder called `.persist_to_disk` is created under your home directory, and will be used to store cache files.**
+**By default, a folder called `.cache/persist_to_disk` is created under your home directory, and will be used to store cache files.**
 If you want to change it, see "Global Settings" below.
 
 # Global Settings

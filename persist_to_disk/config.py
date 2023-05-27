@@ -5,10 +5,9 @@ from pathlib import Path
 from . import _utils
 from .myfilelock import FileLock
 
-SETTING_PATH = os.path.join(Path.home(), '.persist_to_disk')
+SETTING_PATH = os.path.join(Path.home(), '.cache', 'persist_to_disk')
 _utils.make_dir_if_necessary(SETTING_PATH)
 DEFAULT_PERSIST_PATH = os.path.join(SETTING_PATH, 'cache')
-# DEFAULT_PERSIST_PATH = 'C:/Users/zhen7/Desktop/gitRes/persist_to_disk/.persist_to_disk'
 CONFIG_PATH = os.path.join(SETTING_PATH, 'config.ini')
 
 

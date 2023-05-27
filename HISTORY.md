@@ -1,6 +1,7 @@
 ## 0.0.5
 ==================
 1. `lock_granularity` can be set differently for each function.
+2. Changed the default cache folder to `.cache/persist_to_disk`.
 
 ## 0.0.4
 ==================
