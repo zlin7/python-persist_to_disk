@@ -20,7 +20,7 @@ with open('HISTORY.md', encoding='utf-8') as history_file:
 
 setup_args = dict(
     name='persist_to_disk',
-    version='0.0.5',
+    version='0.0.6',
     description='Persist expensive operations on disk.',
     long_description_content_type="text/markdown",
     long_description=README + '\n\n' + HISTORY,
