@@ -114,6 +114,10 @@ def _persist_write(cache_path, key, closure_func: Callable[[], Any], alt_roots, 
 
 def _persist_write_if_necessary(cache_path, key, closure_func: Callable[[], Any],
                                 readonly=False, alt_roots=None, *, lock_path):
+    if readonly:
+        res = _utils.read_pickle(cache_path)
+        assert key in res, f"In readonly mode, but there is no existing cache {key}."
+        return res[key]
     try:
         _print(
             f"persist_to_disk: {cache_path} exists? : {os.path.isfile(cache_path)}.")
