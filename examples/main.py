@@ -4,7 +4,7 @@ import persist_to_disk as ptd
 
 
 # The usage is very similar to functools.lru_cache but it saves the results to disk.
-@ptd.persistf()
+@ptd.persistf(local=True)
 def test_func(a=1):
     print('test_func', a)
     return a
@@ -71,3 +71,5 @@ if __name__ == '__main__':
 
     print("\n\nIf we use cache=ptd.RECACHE, the cache will be overwritten")
     train_a_model('MNIST', FakeModel, {}, lr=0.001, cache=ptd.RECACHE)
+
+    test_func(1)

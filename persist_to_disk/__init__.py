@@ -17,7 +17,7 @@ def persistf(freq=None, hashsize: int = None,
              skip_kwargs: List[str] = None, expand_dict_kwargs: Union[List[str], str] = None,
              groupby: List[str] = None,
              switch_kwarg: str = 'cache_switch', cache: int = None, lock_granularity:str=None,
-             hash_method='pickle'):
+             hash_method='pickle', local=False):
     """Base decorator that does all the heavy-lifting for caching, taking additional arguments.
 
     Args:
@@ -48,13 +48,15 @@ def persistf(freq=None, hashsize: int = None,
         hash_method (str, optional):
             Method to hash the inputs. Can be either 'pickle' or 'json'.
             Defaults to 'pickle'.
+        local (bool, optional):
+            Whether to use local cache. Defaults to False.
     """
     def _decorator(func):
         return persist_func_version(func, config,
                                     freq=freq, hashsize=hashsize,
                                     skip_kwargs=skip_kwargs, expand_dict_kwargs=expand_dict_kwargs,
                                     groupby=groupby, switch_kwarg=switch_kwarg, cache=cache, lock_granularity=lock_granularity,
-                                    hash_method=hash_method)
+                                    hash_method=hash_method, local=local)
     return _decorator
 
 def clear_locks(clear=False):
@@ -124,6 +126,6 @@ __all__ = [
     'manual_cache'
 ]
 
-__version__ = "0.0.6"
+__version__ = "0.0.7"
 __author__ = 'Zhen Lin'
 __credits__ = ''

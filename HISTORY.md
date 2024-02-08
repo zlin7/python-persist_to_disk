@@ -1,3 +1,7 @@
+## 0.0.7
+==================
+1. Shared cache vs local cache (the latter specified by `persist_path_local` in the config). This assumes local reads faster. Can be skipped
+
 ## 0.0.6
 ==================
 1. Added the json serialization mode. This could be specified by `hash_method` when calling `persistf`.

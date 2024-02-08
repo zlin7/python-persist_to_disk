@@ -220,7 +220,7 @@ class Persister():
                  skip_kwargs: List[str] = None, expand_dict_kwargs: Union[List[str], str] = None,
                  groupby: List[str] = None,
                  switch_kwarg: str = 'cache_switch', cache: int = None, lock_granularity:str=None,
-                 hash_method='pickle'):
+                 hash_method='pickle', local=False):
         assert hash_method in {'pickle', 'json'}
         functools.update_wrapper(self, func)
         self.__defaults__ = six.get_function_defaults(func)
@@ -254,7 +254,7 @@ class Persister():
 
         # Get the cache_dir straight
         self.cache_dir = get_persist_dir_from_paths(
-            config.get_project_persist_path(),
+            config.get_project_persist_path(local=local),
             inspect.getsourcefile(func),
             config.get_project_path()
         )
@@ -265,6 +265,7 @@ class Persister():
         self.alt_roots = config.get_alternative_roots()
 
         self.cache = cache
+        print(local, self.cache_dir)
 
     def __call__(self, *args, **kwargs):
         kwargs = copy.deepcopy(kwargs)
