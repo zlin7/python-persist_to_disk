@@ -45,6 +45,9 @@ def persistf(freq=None, hashsize: int = None,
             Defaults to None (equivalent to CACHE).
         lock_granularity (str, optional):
             Granularity of the lock. Can be either 'function', 'call' or 'global'.
+        hash_method (str, optional):
+            Method to hash the inputs. Can be either 'pickle' or 'json'.
+            Defaults to 'pickle'.
     """
     def _decorator(func):
         return persist_func_version(func, config,

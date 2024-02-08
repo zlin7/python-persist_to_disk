@@ -1,3 +1,8 @@
+## 0.0.6
+==================
+1. Added the json serialization mode. This could be specified by `hash_method` when calling `persistf`.
+2. If a function is specified to be `cache=ptd.READONLY`, no file lock will be used (to avoid unncessary conflict).
+
 ## 0.0.5
 ==================
 1. `lock_granularity` can be set differently for each function.
