@@ -16,7 +16,8 @@ config = Config()
 def persistf(freq=None, hashsize: int = None,
              skip_kwargs: List[str] = None, expand_dict_kwargs: Union[List[str], str] = None,
              groupby: List[str] = None,
-             switch_kwarg: str = 'cache_switch', cache: int = None, lock_granularity:str=None):
+             switch_kwarg: str = 'cache_switch', cache: int = None, lock_granularity:str=None,
+             hash_method='pickle'):
     """Base decorator that does all the heavy-lifting for caching, taking additional arguments.
 
     Args:
@@ -44,50 +45,17 @@ def persistf(freq=None, hashsize: int = None,
             Defaults to None (equivalent to CACHE).
         lock_granularity (str, optional):
             Granularity of the lock. Can be either 'function', 'call' or 'global'.
+        hash_method (str, optional):
+            Method to hash the inputs. Can be either 'pickle' or 'json'.
+            Defaults to 'pickle'.
     """
     def _decorator(func):
         return persist_func_version(func, config,
                                     freq=freq, hashsize=hashsize,
                                     skip_kwargs=skip_kwargs, expand_dict_kwargs=expand_dict_kwargs,
-                                    groupby=groupby, switch_kwarg=switch_kwarg, cache=cache, lock_granularity=lock_granularity)
+                                    groupby=groupby, switch_kwarg=switch_kwarg, cache=cache, lock_granularity=lock_granularity,
+                                    hash_method=hash_method)
     return _decorator
-
-
-def persist(freq=None, hashsize: int = None,
-            skip_kwargs: List[str] = None, expand_dict_kwargs: Union[List[str], str] = None,
-            groupby: List[str] = None,
-            switch_kwarg: str = 'cache_switch', cache: int = None):
-    """Base decorator that does all the heavy-lifting for caching, taking additional arguments.
-
-    Args:
-        freq (_type_, optional): unused for now. Defaults to None.
-        hashsize (int, optional): Calls/Inputs to func are hashed into *hashsize* buckets.
-            Defaults to what's set in config.
-        skip_kwargs (List[str], optional): these kwargs are ignored (e.g. gpu_id, verbose, ...).
-            Defaults to empty list.
-        expand_dict_kwargs (Union[List[str], str], optional): arguments to expand.
-            Applies to arguments to *func* that are dictionaries.
-            If str, it must be `all` which means all dictionaries are recursively expanded.
-            Note that any calls with un-expanded dictionary arguments will fail.
-            Defaults to None.
-        groupby (List[str], optional): Create several levels of cache.
-            For example, if groupby=['dataset'], then calls with each
-            dataset will be stored in a separate folder.
-            Defaults to None.
-        switch_kwarg (str, optional):
-            A switch to turn on/off the caching mechanism.
-            Takes value in {NOCACHE, CACHE, RECACHE, READONLY}
-            Defaults to 'cache_switch'.
-        cache (int, optional):
-            Same as switch_kwarg but this is a function-level setting (not call level).
-            Useful for recaching/debugging purposes.
-            Defaults to None (equivalent to CACHE).
-    """
-    return lambda func: Persister(func, config,
-                                  freq=freq, hashsize=hashsize,
-                                  skip_kwargs=skip_kwargs, expand_dict_kwargs=expand_dict_kwargs,
-                                  groupby=groupby, switch_kwarg=switch_kwarg, cache=cache)
-
 
 def clear_locks(clear=False):
     """This function clears ALL locks for your project, if any.
@@ -150,13 +118,12 @@ def manual_cache(key: str, obj: Any = None, write: bool = False) -> Any:
 
 __all__ = [
     'config',
-    'persist',
     'clear_locks',
     'persistf',
     'get_caller_cache_path',
     'manual_cache'
 ]
 
-__version__ = "0.0.5"
+__version__ = "0.0.6"
 __author__ = 'Zhen Lin'
 __credits__ = ''

@@ -2,8 +2,7 @@
 """
 import copy
 import functools
-#import time
-#import sys
+import json
 import glob
 import hashlib
 import inspect
@@ -59,6 +58,23 @@ def get_persist_dir_from_paths(base_dir: str, file_path: str, project_path: str)
     return os.path.normpath(persist_dir)
 
 
+def _hash_tuple_json(k):
+    def json_default(thing):
+        if inspect.isclass(thing):
+            return str(thing)
+        raise TypeError(f"object of type {type(thing).__name__} not serializable")
+    def json_dumps(thing):
+        return json.dumps(
+            thing,
+            default=json_default,
+            ensure_ascii=False,
+            sort_keys=True,
+            indent=None,
+            separators=(',', ':'),
+        )
+    return int(hashlib.md5(json_dumps(dict(k)).encode('utf-8')).hexdigest(), 16)
+
+
 def _hash(k):
     return int(hashlib.md5(pickle.dumps(k, protocol=3)).hexdigest(), 16)
 
@@ -98,6 +114,10 @@ def _persist_write(cache_path, key, closure_func: Callable[[], Any], alt_roots, 
 
 def _persist_write_if_necessary(cache_path, key, closure_func: Callable[[], Any],
                                 readonly=False, alt_roots=None, *, lock_path):
+    if readonly:
+        res = _utils.read_pickle(cache_path)
+        assert key in res, f"In readonly mode, but there is no existing cache {key}."
+        return res[key]
     try:
         _print(
             f"persist_to_disk: {cache_path} exists? : {os.path.isfile(cache_path)}.")
@@ -156,7 +176,7 @@ def _clean_kwargs(full_kwargs, skip_kwargs, expand_dict_kwargs):
     return full_kwargs
 
 
-def _get_hashed_path_and_key(cache_dir, full_kwargs, hashsize, groupby):
+def _get_hashed_path_and_key(cache_dir, full_kwargs, hashsize, groupby, hash_method):
     for k in groupby:
         if isinstance(k, tuple):
             dirname = "$$".join([str(full_kwargs.pop(kk)) for kk in k])
@@ -165,7 +185,8 @@ def _get_hashed_path_and_key(cache_dir, full_kwargs, hashsize, groupby):
         cache_dir = os.path.join(cache_dir, dirname)
     _utils.make_dir_if_necessary(cache_dir)
     key = tuple(sorted(six.iteritems(full_kwargs), key=lambda x: x[0]))
-    hashed_path = os.path.join(cache_dir, f"{_hash(key) % hashsize}.pkl")
+    hash_func = {'pickle': _hash, 'json': _hash_tuple_json}[hash_method]
+    hashed_path = os.path.join(cache_dir, f"{hash_func(key) % hashsize}.pkl")
     return hashed_path, key
 
 
@@ -198,7 +219,9 @@ class Persister():
                  freq=None, hashsize: int = None,
                  skip_kwargs: List[str] = None, expand_dict_kwargs: Union[List[str], str] = None,
                  groupby: List[str] = None,
-                 switch_kwarg: str = 'cache_switch', cache: int = None, lock_granularity:str=None):
+                 switch_kwarg: str = 'cache_switch', cache: int = None, lock_granularity:str=None,
+                 hash_method='pickle'):
+        assert hash_method in {'pickle', 'json'}
         functools.update_wrapper(self, func)
         self.__defaults__ = six.get_function_defaults(func)
         if skip_kwargs is None:
@@ -227,6 +250,7 @@ class Persister():
         self.expand_dict_kwargs = expand_dict_kwargs
         self.groupby = groupby
         self.lock_granularity = lock_granularity
+        self.hash_method = hash_method
 
         # Get the cache_dir straight
         self.cache_dir = get_persist_dir_from_paths(
@@ -256,7 +280,7 @@ class Persister():
         _cleaned = _clean_kwargs(
             full_kwargs, self.skip_kwargs, self.expand_dict_kwargs)
         hashed_path, key = _get_hashed_path_and_key(
-            self.cache_dir, _cleaned, self.hashsize, self.groupby)
+            self.cache_dir, _cleaned, self.hashsize, self.groupby, self.hash_method)
         lock_path = _get_lock_path(hashed_path, self.config, self.lock_granularity)
 
         if cache_switch == RECACHE:
