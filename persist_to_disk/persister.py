@@ -265,7 +265,7 @@ class Persister():
         self.alt_roots = config.get_alternative_roots()
 
         self.cache = cache
-        print(local, self.cache_dir)
+        #print(local, self.cache_dir)
 
     def __call__(self, *args, **kwargs):
         kwargs = copy.deepcopy(kwargs)
