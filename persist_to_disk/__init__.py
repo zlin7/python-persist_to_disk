@@ -17,7 +17,7 @@ def persistf(freq=None, hashsize: int = None,
              skip_kwargs: List[str] = None, expand_dict_kwargs: Union[List[str], str] = None,
              groupby: List[str] = None,
              switch_kwarg: str = 'cache_switch', cache: int = None, lock_granularity:str=None,
-             hash_method='pickle', local=False):
+             hash_method='pickle', local:bool=False):
     """Base decorator that does all the heavy-lifting for caching, taking additional arguments.
 
     Args:
@@ -95,7 +95,7 @@ def get_caller_cache_path(make_if_necessary=True):
     return persister._get_caller_cache_path(config, inspect.stack()[1], make_if_necessary)
 
 
-def manual_cache(key: str, obj: Any = None, write: bool = False) -> Any:
+def manual_cache(key: str, obj: Any = None, write: bool = False, local: bool = False) -> Any:
     """Manual cache helper.
     Each function gets a directory to store all results.
     Each result is saved with *key* as the filename.
@@ -111,11 +111,13 @@ def manual_cache(key: str, obj: Any = None, write: bool = False) -> Any:
             Result to cache. Defaults to None.
         write (bool, optional):
             Write or read the cache. Defaults to False.
+        local (bool, optional):
+            Whether to use local cache. Defaults to False.
 
     Returns:
         Any: cached result when *write*, else None.
     """
-    return persister._manual_cache_infer_path(key, obj, write, config, inspect.stack()[1])
+    return persister._manual_cache_infer_path(key, obj, write, config, inspect.stack()[1], local=local)
 
 
 __all__ = [

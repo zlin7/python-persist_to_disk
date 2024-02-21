@@ -312,9 +312,9 @@ def persist_func_version(func, config: Config, **kwargs):
 # ===========================Manual Cache
 
 
-def _get_caller_cache_path(config: Config, caller_=None, make_if_necessary=False):
+def _get_caller_cache_path(config: Config, caller_=None, make_if_necessary=False, local=False):
     cache_dir = get_persist_dir_from_paths(
-        config.get_project_persist_path(),
+        config.get_project_persist_path(local=local),
         caller_.filename,
         config.get_project_path()
     )
@@ -329,8 +329,8 @@ def _get_caller_cache_path(config: Config, caller_=None, make_if_necessary=False
     return cache_dir
 
 
-def _manual_cache_infer_path(key, obj, write, config: Config, caller_):
-    cache_dir = _get_caller_cache_path(config, caller_, True)
+def _manual_cache_infer_path(key, obj, write, config: Config, caller_, local=False):
+    cache_dir = _get_caller_cache_path(config, caller_, True, local=local)
     cache_path = os.path.join(cache_dir, key)
     if write:
         _utils.to_pickle(obj, cache_path)

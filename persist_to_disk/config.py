@@ -40,7 +40,7 @@ def _record_project_persist_path(persist_path, pid, sep='||'):
         elif persist_path not in curr_dict[pid]:
             for i, line in enumerate(lines):
                 if line.strip().split(sep)[0] == pid:
-                    lines[i] = f"{line.strip()}{sep}{persist_path}"
+                    lines[i] = f"{line.strip()}{sep}{persist_path}\n"
                 with open(meta_file, 'w', encoding='utf-8') as fout:
                     fout.writelines(lines)
 
