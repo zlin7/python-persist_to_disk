@@ -6,8 +6,8 @@ import getpass
 from . import _utils
 from .myfilelock import FileLock
 
-#SETTING_PATH = os.path.join(Path.home(), '.cache', 'persist_to_disk')
-SETTING_PATH = f"/shared/{getpass.getuser()}/persist_to_disk"
+SETTING_PATH = os.path.join(Path.home(), '.cache', 'persist_to_disk')
+#SETTING_PATH = f"/shared/{getpass.getuser()}/persist_to_disk"
 _utils.make_dir_if_necessary(SETTING_PATH)
 DEFAULT_PERSIST_PATH = os.path.join(SETTING_PATH, 'cache')
 CONFIG_PATH = os.path.join(SETTING_PATH, 'config.ini')
