@@ -1,11 +1,12 @@
 """ Main script.
 """
+import argparse
 import copy
 import functools
-import json
 import glob
 import hashlib
 import inspect
+import json
 import os
 import pickle
 from typing import Any, Callable, List, Optional, Tuple, Union
@@ -162,6 +163,12 @@ def _get_full_kwargs_noargs(func, args1, kwargs1):
     full_kwargs.update(kwargs1)
     return full_kwargs
 
+def convert_kwarg(v, category):
+    if category == 'argparse.Namespace':
+        if isinstance(v, str):
+            return argparse.Namespace(**json.loads(v))
+        return json.dumps(vars(v))
+    return v
 
 def _clean_kwargs(full_kwargs, skip_kwargs, expand_dict_kwargs):
     for k in skip_kwargs:
@@ -173,7 +180,12 @@ def _clean_kwargs(full_kwargs, skip_kwargs, expand_dict_kwargs):
             if k in full_kwargs.keys():
                 d = full_kwargs.pop(k)
                 full_kwargs.update({f"{k}|{kk}": v for kk, v in d.items()})
-    return full_kwargs
+    special_kwargs = {}
+    for k, v in full_kwargs.items():
+        if isinstance(v, argparse.Namespace):
+            full_kwargs[k] = convert_kwarg(v, 'argparse.Namespace')
+            special_kwargs[k] = 'argparse.Namespace'
+    return full_kwargs, special_kwargs
 
 
 def _get_hashed_path_and_key(cache_dir, full_kwargs, hashsize, groupby, hash_method):
@@ -278,7 +290,7 @@ class Persister():
         cache_switch = self.cache if self.cache is not None else curr_cache_switch
         if cache_switch == NOCACHE:
             return self.__wrapped__(**full_kwargs)
-        _cleaned = _clean_kwargs(
+        _cleaned, special_kwargs = _clean_kwargs(
             full_kwargs, self.skip_kwargs, self.expand_dict_kwargs)
         hashed_path, key = _get_hashed_path_and_key(
             self.cache_dir, _cleaned, self.hashsize, self.groupby, self.hash_method)

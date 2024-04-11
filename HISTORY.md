@@ -1,6 +1,7 @@
 ## 0.0.7
 ==================
 1. Shared cache vs local cache (the latter specified by `persist_path_local` in the config). This assumes local reads faster. Can be skipped
+2. Add support for `argparse.Namespace` to support a common practice.
 
 ## 0.0.6
 ==================
