@@ -18,7 +18,9 @@ from .config import Config
 from .myfilelock import FileLock, Timeout
 
 _DEBUG = False
-NOCACHE, CACHE, RECACHE, READONLY = [0, 1, 2, 3]
+NOCACHE, CACHE, RECACHE, READONLY, CHECKONLY = [0, 1, 2, 3, 4]
+# CHECKONLY checks if the cache is there, without actually reading it (so it could be corrupted as well)
+# This only makes sense for manual cache, not for the decorator, due to the hashing mechanism.
 
 
 def _print(*args, **kwargs):
@@ -341,12 +343,14 @@ def _get_caller_cache_path(config: Config, caller_=None, make_if_necessary=False
     return cache_dir
 
 
-def _manual_cache_infer_path(key, obj, write, config: Config, caller_, local=False):
+def _manual_cache_infer_path(key, obj, flag, config: Config, caller_, local=False):
     cache_dir = _get_caller_cache_path(config, caller_, True, local=local)
     cache_path = os.path.join(cache_dir, key)
-    if write:
+    if flag in {RECACHE, CACHE}:
         _utils.to_pickle(obj, cache_path)
-    else:
+    elif flag == CHECKONLY:
+        return os.path.exists(cache_path)
+    elif flag == READONLY:
         if os.path.exists(cache_path):
             return _utils.read_pickle(cache_path)
         return None

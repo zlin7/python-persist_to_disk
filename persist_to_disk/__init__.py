@@ -6,8 +6,15 @@ from typing import Any, Callable, List, Optional, Tuple, Union
 
 from . import persister
 from .config import Config
-from .persister import (CACHE, NOCACHE, READONLY, RECACHE, Persister,
-                        persist_func_version)
+from .persister import (
+    CACHE,
+    CHECKONLY,
+    NOCACHE,
+    READONLY,
+    RECACHE,
+    Persister,
+    persist_func_version,
+)
 
 # Global config so user could set the root directory for persist ops
 config = Config()
@@ -95,7 +102,7 @@ def get_caller_cache_path(make_if_necessary=True):
     return persister._get_caller_cache_path(config, inspect.stack()[1], make_if_necessary)
 
 
-def manual_cache(key: str, obj: Any = None, write: bool = False, local: bool = False) -> Any:
+def manual_cache(key: str, obj: Any = None, write: bool = False, checkonly: bool = False, local: bool = False, stacklevel=1) -> Any:
     """Manual cache helper.
     Each function gets a directory to store all results.
     Each result is saved with *key* as the filename.
@@ -111,13 +118,19 @@ def manual_cache(key: str, obj: Any = None, write: bool = False, local: bool = F
             Result to cache. Defaults to None.
         write (bool, optional):
             Write or read the cache. Defaults to False.
+        checkonly (bool, optional):
+            Check if the file exists without reading. Defaults to False.
         local (bool, optional):
             Whether to use local cache. Defaults to False.
+        stacklevel (int, optional):
+            How many levels to go back to get the caller. Defaults to 1.
 
     Returns:
         Any: cached result when *write*, else None.
     """
-    return persister._manual_cache_infer_path(key, obj, write, config, inspect.stack()[1], local=local)
+    assert not (write and checkonly), "Cannot write and checkonly at the same time."
+    flag = RECACHE if write else (CHECKONLY if checkonly else READONLY)
+    return persister._manual_cache_infer_path(key, obj, flag, config, inspect.stack()[stacklevel], local=local)
 
 
 __all__ = [
