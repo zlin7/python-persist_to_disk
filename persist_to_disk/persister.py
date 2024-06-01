@@ -99,14 +99,18 @@ def _persist_rw_curr_results(cache_path, write_key=None, write_val=None, *, lock
         return res
 
 
-def _persist_write(cache_path, key, closure_func: Callable[[], Any], alt_roots, *, lock_path):
-    if alt_roots is not None:
-        # try to look up in alterantive root cache paths..
-        # If can't find anything, then save to the original path.
-        # This is like merging cache.
-        # assert _PERSIST_PATH in cache_path, "How did you generate this cache path??"
-        raise NotImplementedError()  # Should probably replace before passing in alt_roots
-    else:
+def _persist_write(cache_path, key, closure_func: Callable[[], Any], alt_dirs, *, lock_path):
+    need_to_run = True
+    if alt_dirs is not None:
+        assert isinstance(alt_dirs, list), f"alt_dirs should be a list, but got {alt_dirs}."
+        for temp_cache_path in alt_dirs:
+            try:
+                val = _utils.read_pickle(temp_cache_path)[key]
+                need_to_run = False
+                break
+            except Exception as err:
+                print(f"Failed to read from {temp_cache_path}: {err}")
+    if need_to_run:
         val = closure_func()
     try:
         _persist_rw_curr_results(cache_path, key, val, lock_path=lock_path)
@@ -116,7 +120,7 @@ def _persist_write(cache_path, key, closure_func: Callable[[], Any], alt_roots, 
 
 
 def _persist_write_if_necessary(cache_path, key, closure_func: Callable[[], Any],
-                                readonly=False, alt_roots=None, *, lock_path):
+                                readonly=False, alt_dirs=None, *, lock_path):
     if readonly:
         res = _utils.read_pickle(cache_path)
         assert key in res, f"In readonly mode, but there is no existing cache {key}."
@@ -132,7 +136,7 @@ def _persist_write_if_necessary(cache_path, key, closure_func: Callable[[], Any]
     except Timeout as err:
         raise err
     assert not readonly, "In readonly mode, but there is no existing cache."
-    return _persist_write(cache_path, key, closure_func, alt_roots=alt_roots, lock_path=lock_path)
+    return _persist_write(cache_path, key, closure_func, alt_dirs=alt_dirs, lock_path=lock_path)
 
 
 # test input d={"model": {"1": {"2": 3, '2a': 4}}, 'a': 2}
@@ -234,7 +238,7 @@ class Persister():
                  skip_kwargs: List[str] = None, expand_dict_kwargs: Union[List[str], str] = None,
                  groupby: List[str] = None,
                  switch_kwarg: str = 'cache_switch', cache: int = None, lock_granularity:str=None,
-                 hash_method='pickle', local=False):
+                 hash_method='pickle', local=False, alt_dirs=None):
         assert hash_method in {'pickle', 'json'}
         functools.update_wrapper(self, func)
         self.__defaults__ = six.get_function_defaults(func)
@@ -273,10 +277,12 @@ class Persister():
             config.get_project_path()
         )
         self.cache_dir = os.path.join(self.cache_dir, self.__name__)
+        if alt_dirs is not None:
+            alt_dirs = [os.path.normpath(os.path.abspath(_)) for _ in alt_dirs]
+        self.alt_dirs = alt_dirs
         assert '__main__' not in self.cache_dir
         _utils.make_dir_if_necessary(self.cache_dir)
         assert freq is None, "Not implemented yet"
-        self.alt_roots = config.get_alternative_roots()
 
         self.cache = cache
         #print(local, self.cache_dir)
@@ -298,11 +304,15 @@ class Persister():
             self.cache_dir, _cleaned, self.hashsize, self.groupby, self.hash_method)
         lock_path = _get_lock_path(hashed_path, self.config, self.lock_granularity)
 
+        alt_dirs = self.alt_dirs
+        if alt_dirs is not None:
+            alt_dirs = [hashed_path.replace(self.cache_dir, _) for _ in alt_dirs]
+
         if cache_switch == RECACHE:
-            return _persist_write(hashed_path, key, closure, alt_roots=None, lock_path=lock_path)
+            return _persist_write(hashed_path, key, closure, alt_dirs=None, lock_path=lock_path)
         return _persist_write_if_necessary(hashed_path, key, closure,
                                            readonly=cache_switch == READONLY,
-                                           alt_roots=self.alt_roots, lock_path=lock_path)
+                                           alt_dirs=alt_dirs, lock_path=lock_path)
 
     def clear(self):
         """clean all the cache for self.__wrapped__
@@ -343,8 +353,17 @@ def _get_caller_cache_path(config: Config, caller_=None, make_if_necessary=False
     return cache_dir
 
 
-def _manual_cache_infer_path(key, obj, flag, config: Config, caller_, local=False):
+def _manual_cache_infer_path(key, obj, flag, config: Config, caller_, local=False, alt_root=None):
     cache_dir = _get_caller_cache_path(config, caller_, True, local=local)
+    if alt_root is not None:
+        if isinstance(alt_root, str):
+            assert os.path.basename(alt_root) == os.path.basename(cache_dir), \
+                f"Expect the same base directory, but got {alt_root} and {cache_dir}."
+            cache_dir = alt_root
+        else:
+            alt_root = alt_root(cache_dir)
+            print(f"Using alternative root {alt_root} instead of {cache_dir}.")
+            cache_dir = alt_root
     cache_path = os.path.join(cache_dir, key)
     if flag in {RECACHE, CACHE}:
         _utils.to_pickle(obj, cache_path)

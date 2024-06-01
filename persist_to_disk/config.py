@@ -1,7 +1,7 @@
 import configparser
+import getpass
 import os
 from pathlib import Path
-import getpass
 
 from . import _utils
 from .myfilelock import FileLock
@@ -102,9 +102,6 @@ class Config(dict):
 
     def set_alternative_readonly_persist_paths(self, paths):
         raise NotImplementedError()
-
-    def get_alternative_roots(self):
-        return None
 
     def _compute_and_save_actual_persist_path(self, local=False):
         persist_path = self.get_persist_path(local=local)

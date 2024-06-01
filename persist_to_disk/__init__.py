@@ -1,5 +1,5 @@
-"""Main functions for persist_to_disk.
-"""
+"""Main functions for persist_to_disk."""
+
 import inspect
 import os
 from typing import Any, Callable, List, Optional, Tuple, Union
@@ -20,11 +20,19 @@ from .persister import (
 config = Config()
 
 
-def persistf(freq=None, hashsize: int = None,
-             skip_kwargs: List[str] = None, expand_dict_kwargs: Union[List[str], str] = None,
-             groupby: List[str] = None,
-             switch_kwarg: str = 'cache_switch', cache: int = None, lock_granularity:str=None,
-             hash_method='pickle', local:bool=False):
+def persistf(
+    freq=None,
+    hashsize: int = None,
+    skip_kwargs: List[str] = None,
+    expand_dict_kwargs: Union[List[str], str] = None,
+    groupby: List[str] = None,
+    switch_kwarg: str = "cache_switch",
+    cache: int = None,
+    lock_granularity: str = None,
+    hash_method="pickle",
+    local: bool = False,
+    alt_dirs: List[str] = None,
+):
     """Base decorator that does all the heavy-lifting for caching, taking additional arguments.
 
     Args:
@@ -57,14 +65,29 @@ def persistf(freq=None, hashsize: int = None,
             Defaults to 'pickle'.
         local (bool, optional):
             Whether to use local cache. Defaults to False.
+        alt_dirs (List[str], optional):
+            Alternative directories to *read* the cache. Defaults to None.
     """
+
     def _decorator(func):
-        return persist_func_version(func, config,
-                                    freq=freq, hashsize=hashsize,
-                                    skip_kwargs=skip_kwargs, expand_dict_kwargs=expand_dict_kwargs,
-                                    groupby=groupby, switch_kwarg=switch_kwarg, cache=cache, lock_granularity=lock_granularity,
-                                    hash_method=hash_method, local=local)
+        return persist_func_version(
+            func,
+            config,
+            freq=freq,
+            hashsize=hashsize,
+            skip_kwargs=skip_kwargs,
+            expand_dict_kwargs=expand_dict_kwargs,
+            groupby=groupby,
+            switch_kwarg=switch_kwarg,
+            cache=cache,
+            lock_granularity=lock_granularity,
+            hash_method=hash_method,
+            local=local,
+            alt_dirs=alt_dirs,
+        )
+
     return _decorator
+
 
 def clear_locks(clear=False):
     """This function clears ALL locks for your project, if any.
@@ -99,10 +122,20 @@ def get_caller_cache_path(make_if_necessary=True):
     Returns:
         str: default path to save the cache
     """
-    return persister._get_caller_cache_path(config, inspect.stack()[1], make_if_necessary)
+    return persister._get_caller_cache_path(
+        config, inspect.stack()[1], make_if_necessary
+    )
 
 
-def manual_cache(key: str, obj: Any = None, write: bool = False, checkonly: bool = False, local: bool = False, stacklevel=1) -> Any:
+def manual_cache(
+    key: str,
+    obj: Any = None,
+    write: bool = False,
+    checkonly: bool = False,
+    local: bool = False,
+    stacklevel=1,
+    alt_root: Optional[Union[str, Callable]] = None,
+) -> Any:
     """Manual cache helper.
     Each function gets a directory to store all results.
     Each result is saved with *key* as the filename.
@@ -124,23 +157,21 @@ def manual_cache(key: str, obj: Any = None, write: bool = False, checkonly: bool
             Whether to use local cache. Defaults to False.
         stacklevel (int, optional):
             How many levels to go back to get the caller. Defaults to 1.
+        alt_root (Optional[Union[str, Callable]], optional):
+            Alternative root to read the cache, or function to mod the cache_dir. Defaults to None.
 
     Returns:
         Any: cached result when *write*, else None.
     """
     assert not (write and checkonly), "Cannot write and checkonly at the same time."
     flag = RECACHE if write else (CHECKONLY if checkonly else READONLY)
-    return persister._manual_cache_infer_path(key, obj, flag, config, inspect.stack()[stacklevel], local=local)
+    return persister._manual_cache_infer_path(
+        key, obj, flag, config, inspect.stack()[stacklevel], local=local, alt_root=alt_root
+    )
 
 
-__all__ = [
-    'config',
-    'clear_locks',
-    'persistf',
-    'get_caller_cache_path',
-    'manual_cache'
-]
+__all__ = ["config", "clear_locks", "persistf", "get_caller_cache_path", "manual_cache"]
 
 __version__ = "0.0.7"
-__author__ = 'Zhen Lin'
-__credits__ = ''
+__author__ = "Zhen Lin"
+__credits__ = ""
