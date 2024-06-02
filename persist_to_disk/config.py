@@ -1,4 +1,5 @@
 import configparser
+import getpass
 import os
 from pathlib import Path
 
@@ -6,11 +7,13 @@ from . import _utils
 from .myfilelock import FileLock
 
 SETTING_PATH = os.path.join(Path.home(), '.cache', 'persist_to_disk')
+#SETTING_PATH = f"/shared/{getpass.getuser()}/persist_to_disk"
 _utils.make_dir_if_necessary(SETTING_PATH)
 DEFAULT_PERSIST_PATH = os.path.join(SETTING_PATH, 'cache')
 CONFIG_PATH = os.path.join(SETTING_PATH, 'config.ini')
 
 
+# Regardless of shared on local path, it should bear one pid across all servers, once the home directory is merged.
 def _read_project_pid(project_path, sep='||'):
     assert sep not in project_path
     project_path = os.path.normpath(project_path)
@@ -37,7 +40,7 @@ def _record_project_persist_path(persist_path, pid, sep='||'):
         elif persist_path not in curr_dict[pid]:
             for i, line in enumerate(lines):
                 if line.strip().split(sep)[0] == pid:
-                    lines[i] = f"{line.strip()}{sep}{persist_path}"
+                    lines[i] = f"{line.strip()}{sep}{persist_path}\n"
                 with open(meta_file, 'w', encoding='utf-8') as fout:
                     fout.writelines(lines)
 
@@ -66,6 +69,10 @@ class Config(dict):
                        'project_path': os.path.normpath(os.getcwd())}
         self.set_persist_path(
                 self.global_config['global_settings']['persist_path'])
+        if 'persist_path_local' not in self.global_config['global_settings']:
+            self.global_config['global_settings']['persist_path_local'] = self.global_config['global_settings']['persist_path']
+        self.set_persist_path_local(
+            self.global_config['global_settings']['persist_path_local'])
 
         self._private_config = {'_persist_path': {}}
         for key in ['hashsize', 'lock_granularity']:
@@ -85,6 +92,10 @@ class Config(dict):
         self.config['persist_path'] = os.path.normpath(os.path.abspath(path))
         return self.config['persist_path']
 
+    def set_persist_path_local(self, path):
+        self.config['persist_path_local'] = os.path.normpath(os.path.abspath(path))
+        return self.config['persist_path_local']
+
     def set_hashsize(self, hashsize=500):
         self.config['hashsize'] = hashsize
         return hashsize
@@ -92,11 +103,8 @@ class Config(dict):
     def set_alternative_readonly_persist_paths(self, paths):
         raise NotImplementedError()
 
-    def get_alternative_roots(self):
-        return None
-
-    def _compute_and_save_actual_persist_path(self):
-        persist_path = self.get_persist_path()
+    def _compute_and_save_actual_persist_path(self, local=False):
+        persist_path = self.get_persist_path(local=local)
         project_path = self.get_project_path()
 
         if (persist_path, project_path) not in self._private_config['_persist_path']:
@@ -107,11 +115,11 @@ class Config(dict):
             self._private_config['_persist_path'][(persist_path, project_path)] = final_path
         return self._private_config['_persist_path'][(persist_path, project_path)]
 
-    def get_persist_path(self):
-        return self.config['persist_path']
+    def get_persist_path(self, local=False):
+        return self.config['persist_path_local' if local else 'persist_path']
 
-    def get_project_persist_path(self):
-        return self._compute_and_save_actual_persist_path()
+    def get_project_persist_path(self, local=False):
+        return self._compute_and_save_actual_persist_path(local=local)
 
     def get_project_path(self):
         return self.config['project_path']

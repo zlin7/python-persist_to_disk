@@ -1,10 +1,11 @@
+import argparse
 import functools
 
 import persist_to_disk as ptd
 
 
 # The usage is very similar to functools.lru_cache but it saves the results to disk.
-@ptd.persistf()
+@ptd.persistf(local=True)
 def test_func(a=1):
     print('test_func', a)
     return a
@@ -27,7 +28,7 @@ class FakeModel:
         print(f"Training model with lr={lr} for {echo} epochs.")
 
 @ptd.persistf(groupby=['dataset', 'epochs'], expand_dict_kwargs=['model_kwargs'], skip_kwargs=['device'], switch_kwarg='cache')
-def train_a_model(dataset, model_cls, model_kwargs, lr, epochs=30, device='cpu',**kwargs):
+def train_a_model(dataset, model_cls, model_kwargs, lr, epochs=30, device='cpu', args:argparse.Namespace=None, **kwargs):
     # This function demos how to use persist_to_disk in training the model
     model = model_cls(**model_kwargs)
     model.to(device)
@@ -71,3 +72,9 @@ if __name__ == '__main__':
 
     print("\n\nIf we use cache=ptd.RECACHE, the cache will be overwritten")
     train_a_model('MNIST', FakeModel, {}, lr=0.001, cache=ptd.RECACHE)
+
+    test_func(1)
+
+    # In v0.0.7, we can pass argparse.Namespace to the function.
+    print("\n\nIn v0.0.7, we can pass argparse.Namespace to the function.")
+    train_a_model('MNIST', FakeModel, {}, lr=0.001, args=argparse.Namespace(other_argument=30))
